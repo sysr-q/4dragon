@@ -6,6 +6,11 @@ import re
 
 class Hero(object):
     _match = r"^$"  # So we don't match anyone
+    weapon = ""
+    dead = False
+    can_revive = False
+    can_heal = False
+    can_avenge = False
 
     def __init__(self, id=None, **kwargs):
         self.id = id
