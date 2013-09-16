@@ -6,11 +6,14 @@ import re
 
 class Hero(object):
     _match = r"^$"  # So we don't match anyone
+    nickname = ""
+    posts = []  # list of posts attached to this hero
     weapon = ""
     dead = False
     can_revive = False
     can_heal = False
     can_avenge = False
+    can_attack_when_dead = False
 
     def __init__(self, id=None, **kwargs):
         self.id = id
@@ -26,6 +29,9 @@ class Hero(object):
             self.__class__.__name__,
             ", ".join(parts)
         )
+
+    def __str__(self):
+        return self.__class__.__name__
 
     @classmethod
     def from_id(cls, id_):
@@ -72,12 +78,14 @@ class Ranger(Hero):
 # a more exact regex, so we'd prefer to match it first.
 class DragonBorn(Hero):
     _match = r"^[/+].+[/+]$"
+    can_attack_when_dead = True
 
 class Paladin(Hero):
     _match = r"^[/+]"
 
 class DeathKnight(Hero):
     _match = r"[/+]$"
+    can_attack_when_dead = True
 
 class Plebeian(Hero):
     _match = r"^Heaven$"

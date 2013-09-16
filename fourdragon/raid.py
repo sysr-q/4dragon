@@ -27,18 +27,55 @@ class Raid(object):
     max_revive_times = 6
     max_avenge_times = 6
 
-    def __init__(self, thread, verbose=False):
-        if verbose:
-            self.thread = thread
-        else:
-            self.thread = fourch.board("b").thread(thread)
+    def __init__(self, thread, board="q", verbose=False, debug=False):
+        self.thread = fourch.board(board).thread(thread)
         self.verbose = verbose
+        self.debug = debug
         self.boss = None
         self._post_dead = False
+        self._fresh = True
         self._fetch()
+        self.heroes = {}
+        self.events = []
 
     def sync(self):
-        pass
+        # Post/Boss is dead.
+        if not self.thread.alive or self.boss.health <= 0:
+            return
+        new = self.thread.update()
+        if not self._fresh and new == 0:
+            return
+        if self._fresh:
+            self._fresh = False
+        # Slice [-new:] so we just iterate the new posts.
+        for post in self.thread.replies[-new:]:
+            hero = self.hero(post)
+            if hero.dead and not hero.can_attack_when_dead:
+                # YOU'RE DEAD, DON'T EVEN TRY THAT CRAP.
+                continue
+            # TODO: Bard bonus~?
+
+    def hero(self, post, **kwargs):
+        if post.id not in self.heroes:
+            hero = fourdragon.Hero.from_id(post.id)(**kwargs)
+            self.heroes[post.id] = hero
+        else:
+            hero = self.heroes[post.id]
+        nickname = self._parse_command("nickname", r"(\w{,14})", post.comment_text)
+        if nickname is not None:
+            hero.nickname = nickname
+        post.roll = self.roll(post.number, 2)
+        hero.posts.append(post)
+        return hero
+
+    def roll(self, no, n):
+        """TODO: improve this.
+        """
+        r = int(str(no)[-n:])
+        while r == 0:
+            n += 1
+            r = int(str(no)[-n:])
+        return r
 
     def _parse_command(self, name, matcher, comment, flags=re.I):
         r = "{0}@{1}".format(name, matcher)
@@ -51,8 +88,12 @@ class Raid(object):
         """ Pulls the OP comment from the thread and sets up required
             variables (read: the boss) from the post.
         """
-        if self.verbose:
-            op = "blah\nBLAH BLAH: difficulty@noob\nname@SomeDude\nelement@random"
+        if self.debug:
+            op = ("It's dragon slaying time, bitches!\n"
+                  "SOME INFO BOUT DIS DRAGON:\n"
+                  "difficulty@noob\n"
+                  "name@SomeDude\n"
+                  "element@random")
         else:
             op = self.thread.op.comment_text
         boss = {
